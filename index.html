@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件管理系统</title>
+    <style>
+        :root {
+            --primary: #165DFF;
+            --secondary: #36D399;
+            --danger: #F87272;
+            --neutral: #F9FAFB;
+            --border: #E5E7EB;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            background-color: var(--neutral);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        /* 系统名称栏 */
+        .system-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .system-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #systemTitle {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        #editTitleBtn {
+            background: none;
+            border: none;
+            color: var(--primary);
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #titleInput {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 20px;
+            display: none;
+        }
+        /* 卡片通用样式 */
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        /* 分类管理 */
+        .category-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tag {
+            padding: 6px 14px;
+            background: var(--neutral);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .tag.active {
+            background: var(--primary);
+            color: white;
+        }
+        .tag .delete-tag {
+            display: none;
+            color: var(--danger);
+            margin-left: 6px;
+            cursor: pointer;
+        }
+        .tag:hover .delete-tag {
+            display: inline;
+        }
+        #createCatBtn {
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #createCatBtn:hover {
+            opacity: 0.9;
+        }
+        /* 上传区域 */
+        .upload-area {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 16px 0;
+        }
+        .upload-area.dragover {
+            border-color: var(--primary);
+            background: rgba(22, 93, 255, 0.05);
+        }
+        .upload-icon {
+            font-size: 40px;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+        .upload-text {
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .upload-desc {
+            font-size: 14px;
+            color: #666;
+        }
+        #fileUpload {
+            display: none;
+        }
+        /* 文件列表 */
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+        .file-card {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 16px;
+            transition: all 0.2s;
+        }
+        .file-card:hover {
+            box-shadow: var(--shadow);
+            transform: translateY(-2px);
+        }
+        .file-info {
+            margin-bottom: 12px;
+        }
+        .file-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .file-meta {
+            font-size: 14px;
+            color: #666;
+        }
+        .file-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .delete-file {
+            background: none;
+            border: none;
+            color: var(--danger);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .delete-file:hover {
+            opacity: 0.8;
+        }
+        /* 弹窗 */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            width: 360px;
+            max-width: 90%;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        .modal-input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        .modal-btns {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .modal-btn {
+            border: none;
+            border-radius: 4px;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-cancel {
+            background: var(--neutral);
+            color: #666;
+        }
+        .modal-confirm {
+            background: var(--primary);
+            color: white;
+        }
+        .modal-btn:hover {
+            opacity: 0.9;
+        }
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .system-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .file-list {
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 系统名称栏 -->
+        <div class="system-header">
+            <div class="system-title-wrap">
+                <h1 id="systemTitle">文件管理系统</h1>
+                <button id="editTitleBtn" title="修改系统名称">✏️</button>
+                <input type="text" id="titleInput" placeholder="输入新名称">
+            </div>
+        </div>
+
+        <!-- 分类管理卡片 -->
+        <div class="card">
+            <div class="card-title">
+                <span>🏷️ 分类管理</span>
+                <button id="createCatBtn">新建分类</button>
+            </div>
+            <div class="category-tags" id="categoryTags">
+                <div class="tag active" data-cat="all">全部文件</div>
+                <div class="tag" data-cat="uncategorized">未分类 <span class="delete-tag" style="display:none;">×</span></div>
+            </div>
+        </div>
+
+        <!-- 上传区域卡片 -->
+        <div class="card">
+            <div class="card-title">📤 上传文件</div>
+            <label class="upload-area" for="fileUpload">
+                <div class="upload-icon">☁️</div>
+                <div class="upload-text">点击或拖拽文件到此处上传</div>
+                <div class="upload-desc">支持图片、文档等格式，单文件≤100MB</div>
+                <input type="file" multiple class="file-input" id="fileUpload">
+            </label>
+        </div>
+
+        <!-- 文件列表卡片 -->
+        <div class="card">
+            <div class="card-title" id="listTitle">全部文件列表 (0个)</div>
+            <div class="file-list" id="fileList">
+                <div style="text-align: center; padding: 30px 0; color: #666;">
+                    <div style="font-size: 30px; margin-bottom: 10px;">📂</div>
+                    <p>暂无文件，请上传或切换分类</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新建分类弹窗 -->
+    <div class="modal" id="catModal">
+        <div class="modal-content">
+            <div class="modal-title">新建分类</div>
+            <input type="text" class="modal-input" id="catName" placeholder="输入分类名称（如：工作文档）">
+            <div class="modal-btns">
+                <button class="modal-btn modal-cancel" onclick="document.getElementById('catModal').style.display='none'">取消</button>
+                <button class="modal-btn modal-confirm" onclick="createCategory()">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除分类弹窗 -->
+    <div class="modal" id="delCatModal">
+        <div class="modal-content">
+            <div class="modal-title">删除分类确认</div>
+            <p id="delCatTip">确定删除该分类吗？分类下的文件将自动迁移到“未分类”。</p>
+            <div class="modal-btns">
+                <button class="modal-btn modal-cancel" onclick="document.getElementById('delCatModal').style.display='none'">取消</button>
+                <button class="modal-btn modal-confirm" onclick="confirmDeleteCategory()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除文件弹窗 -->
+    <div class="modal" id="delFileModal">
+        <div class="modal-content">
+            <div class="modal-title">删除文件确认</div>
+            <p id="delFileTip">确定删除该文件吗？</p>
+            <div class="modal-btns">
+                <button class="modal-btn modal-cancel" onclick="document.getElementById('delFileModal').style.display='none'">取消</button>
+                <button class="modal-btn modal-confirm" onclick="confirmDeleteFile()">确定</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 存储键名
+        const STORAGE_KEY = "optimizedFileManager";
+        // 初始化数据
+        let data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+        data.files = data.files || [];
+        data.categories = data.categories || ["uncategorized"];
+        data.systemTitle = data.systemTitle || "文件管理系统";
+        // 当前操作的分类/文件
+        let currentDelCat = "";
+        let currentDelFileId = "";
+
+        // 渲染系统名称
+        document.getElementById('systemTitle').textContent = data.systemTitle;
+        // 编辑系统名称
+        document.getElementById('editTitleBtn').addEventListener('click', () => {
+            const titleInput = document.getElementById('titleInput');
+            titleInput.value = data.systemTitle;
+            titleInput.style.display = 'inline-block';
+            titleInput.focus();
+            titleInput.select();
+        });
+        document.getElementById('titleInput').addEventListener('blur', () => {
+            document.getElementById('titleInput').style.display = 'none';
+        });
+        document.getElementById('titleInput').addEventListener('keyup', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                data.systemTitle = e.target.value.trim();
+                document.getElementById('systemTitle').textContent = data.systemTitle;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                document.getElementById('titleInput').style.display = 'none';
+            }
+        });
+
+        // 渲染分类标签
+        function renderCategories() {
+            const tagsEl = document.getElementById('categoryTags');
+            tagsEl.innerHTML = '';
+            // 全部文件标签
+            const allTag = document.createElement('div');
+            allTag.className = 'tag active';
+            allTag.dataset.cat = 'all';
+            allTag.textContent = '全部文件';
+            tagsEl.appendChild(allTag);
+            // 其他分类标签
+            data.categories.forEach(cat => {
+                const tag = document.createElement('div');
+                tag.className = 'tag';
+                tag.dataset.cat = cat;
+                tag.innerHTML = `${cat === 'uncategorized' ? '未分类' : cat} <span class="delete-tag">×</span>`;
+                // 删除标签事件（排除“未分类”）
+                if (cat !== 'uncategorized') {
+                    tag.querySelector('.delete-tag').addEventListener('click', () => {
+                        currentDelCat = cat;
+                        document.getElementById('delCatModal').style.display = 'flex';
+                    });
+                } else {
+                    tag.querySelector('.delete-tag').style.display = 'none';
+                }
+                tagsEl.appendChild(tag);
+                // 标签点击事件（切换分类）
+                tag.addEventListener('click', () => {
+                    document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+                    tag.classList.add('active');
+                    renderFiles(tag.dataset.cat);
+                });
+            });
+        }
+
+        // 渲染文件列表
+        function renderFiles(category) {
+            const listEl = document.getElementById('fileList');
+            const titleEl = document.getElementById('listTitle');
+            let files = data.files;
+            if (category !== 'all') {
+                files = data.files.filter(f => f.category === category);
+            }
+            titleEl.textContent = `${category === 'all' ? '全部文件' : category}列表 (${files.length}个)`;
+            if (files.length === 0) {
+                listEl.innerHTML = `
+                    <div style="text-align: center; padding: 30px 0; color: #666;">
+                        <div style="font-size: 30px; margin-bottom: 10px;">📂</div>
+                        <p>此分类下暂无文件</p>
+                    </div>
+                `;
+                return;
+            }
+            listEl.innerHTML = '';
+            files.forEach(file => {
+                const card = document.createElement('div');
+                card.className = 'file-card';
+                card.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name" title="${file.name}">${file.name}</div>
+                        <div class="file-meta">分类：${file.category === 'uncategorized' ? '未分类' : file.category}</div>
+                        <div class="file-meta">大小：${file.size}</div>
+                    </div>
+                    <div class="file-actions">
+                        <button class="delete-file" onclick="showDeleteFileModal('${file.id}')">删除</button>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        // 显示新建分类弹窗
+        document.getElementById('createCatBtn').addEventListener('click', () => {
+            document.getElementById('catModal').style.display = 'flex';
+            document.getElementById('catName').focus();
+        });
+
+        // 创建分类
+        function createCategory() {
+            const name = document.getElementById('catName').value.trim();
+            if (!name || data.categories.includes(name)) {
+                alert('分类名称不能为空或已存在！');
+                return;
+            }
+            data.categories.push(name);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            renderCategories();
+            document.getElementById('catModal').style.display = 'none';
+            document.getElementById('catName').value = '';
+        }
+
+        // 确认删除分类
+        function confirmDeleteCategory() {
+            if (currentDelCat && data.categories.includes(currentDelCat)) {
+                // 迁移文件到未分类
+                data.files.forEach(file => {
+                    if (file.category === currentDelCat) {
+                        file.category = 'uncategorized';
+                    }
+                });
+                // 删除分类
+                data.categories = data.categories.filter(cat => cat !== currentDelCat);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                renderCategories();
+                renderFiles(document.querySelector('.tag.active').dataset.cat);
+            }
+            document.getElementById('delCatModal').style.display = 'none';
+            currentDelCat = '';
+        }
+
+        // 显示删除文件弹窗
+        function showDeleteFileModal(fileId) {
+            currentDelFileId = fileId;
+            const file = data.files.find(f => f.id === fileId);
+            document.getElementById('delFileTip').textContent = `确定删除文件“${file ? file.name : ''}”吗？`;
+            document.getElementById('delFileModal').style.display = 'flex';
+        }
+
+        // 确认删除文件
+        function confirmDeleteFile() {
+            if (currentDelFileId) {
+                data.files = data.files.filter(file => file.id !== currentDelFileId);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                renderFiles(document.querySelector('.tag.active').dataset.cat);
+            }
+            document.getElementById('delFileModal').style.display = 'none';
+            currentDelFileId = '';
+        }
+
+        // 处理文件上传（点击+拖拽）
+        const uploadArea = document.querySelector('.upload-area');
+        const fileInput = document.getElementById('fileUpload');
+
+        // 点击上传
+        uploadArea.addEventListener('click', () => fileInput.click());
+        // 拖拽上传
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            fileInput.files = e.dataTransfer.files;
+            handleUpload(); // 修复：确保调用handleUpload
+        });
+        // 选择文件后上传
+        fileInput.addEventListener('change', () => {
+            handleUpload(); // 修复：显式调用handleUpload
+        });
+
+        // 上传逻辑（修复核心函数）
+        function handleUpload() {
+            const files = fileInput.files;
+            const activeCat = document.querySelector('.tag.active').dataset.cat;
+            if (files.length === 0) return; // 防止空上传
+            Array.from(files).forEach(file => {
+                // 限制大小为100MB
+                if (file.size > 100 * 1024 * 1024) {
+                    alert('文件超过100MB限制，无法上传！');
+                    return;
+                }
+                // 生成唯一ID
+                const fileId = 'file_' + Date.now() + Math.random().toString(36).slice(2, 8);
+                data.files.push({
+                    id: fileId,
+                    name: file.name,
+                    size: (file.size / 1024).toFixed(1) + 'KB',
+                    category: activeCat === 'all' ? 'uncategorized' : activeCat
+                });
+            });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            renderFiles(activeCat); // 上传后更新文件列表
+            fileInput.value = ''; // 清空选择框
+        }
+
+        // 初始化
+        renderCategories();
+        renderFiles('all');
+    </script>
+</body>
+</html>
